@@ -41,7 +41,7 @@ Shows the planned filename changes without copying files.
 
 Shows the planned filename changes, asks for confirmation, then copies the files into a `normalized` folder.
 
-If a preview report already exists in `normalized`, apply uses the most recent preview plan so you do not need to enter chapter numbers again.
+If a preview report already exists in `normalized`, apply uses the most recent preview plan so you do not need to enter chapter numbers again. The apply results are appended to that same report after a blank line.
 
 ```bash
 ./normalize_files.sh apply ./sample_files

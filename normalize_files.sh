@@ -485,22 +485,27 @@ main() {
         exit 1
     fi
 
-    report=$(make_report_path "$output_dir")
-    : > "$report"
-
-    printf 'Mode: %s\nFolder: %s\nFiles found: %s\nReport: %s\n' "$mode" "$folder" "$file_count" "$report"
-    printf 'Mode: %s\nFolder: %s\nFiles found: %s\nReport: %s\n' "$mode" "$folder" "$file_count" "$report" >> "$report"
-
     if [[ "$mode" == "apply" ]] && preview_report=$(find_latest_preview_report "$output_dir"); then
-        printf 'Using preview report: %s\n' "$preview_report"
-        printf 'Using preview report: %s\n' "$preview_report" >> "$report"
+        report=$preview_report
 
         if ! load_preview_plan "$folder" "$output_dir" "$preview_report"; then
             printf 'Could not load planned copies from preview report: %s\n' "$preview_report" >&2
-            printf 'Could not load planned copies from preview report: %s\n' "$preview_report" >> "$report"
+            printf '\nCould not load planned copies from preview report: %s\n' "$preview_report" >> "$report"
             exit 1
         fi
+
+        printf '\n' >> "$report"
+        printf 'Mode: %s\nFolder: %s\nFiles found: %s\nReport: %s\n' "$mode" "$folder" "$file_count" "$report"
+        printf 'Mode: %s\nFolder: %s\nFiles found: %s\nReport: %s\n' "$mode" "$folder" "$file_count" "$report" >> "$report"
+        printf 'Using preview report: %s\n' "$preview_report"
+        printf 'Using preview report: %s\n' "$preview_report" >> "$report"
     else
+        report=$(make_report_path "$output_dir")
+        : > "$report"
+
+        printf 'Mode: %s\nFolder: %s\nFiles found: %s\nReport: %s\n' "$mode" "$folder" "$file_count" "$report"
+        printf 'Mode: %s\nFolder: %s\nFiles found: %s\nReport: %s\n' "$mode" "$folder" "$file_count" "$report" >> "$report"
+
         if ! collect_copies "$mode" "$folder" "$report" "$output_dir"; then
             printf '\nNo files were queued for copying.\n'
             printf '\nNo files were queued for copying.\n' >> "$report"
