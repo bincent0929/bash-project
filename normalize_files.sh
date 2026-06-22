@@ -615,6 +615,8 @@ main() {
     fi
 
     mode=$1
+    # either takes the second argument
+    # or or the directory where executed
     folder=${2:-.}
 
     case "$mode" in
@@ -631,9 +633,12 @@ main() {
         exit 1
     fi
 
+    # removes any trailing slashes
     folder=$(normalize_folder_path "$folder")
+    # defines the output path as end in the "normalized" directory
     output_dir="$folder/normalized"
 
+    # makes sure required commands are available
     if ! command_exists find || ! command_exists sed || ! command_exists sort || ! command_exists uniq; then
         printf 'Required command-line tools are missing.\n' >&2
         exit 1
@@ -660,6 +665,7 @@ main() {
         exit 1
     fi
 
+    # runs if the apply mode is selected after preview has been run
     if [[ "$mode" == "apply" ]] && preview_report=$(find_latest_preview_report "$output_dir"); then
         report=$preview_report
 
@@ -675,12 +681,16 @@ main() {
         printf 'Using preview report: %s\n' "$preview_report"
         printf 'Using preview report: %s\n' "$preview_report" >> "$report"
     else
+        # if apply was selected without preview having been run
+        # or if preview was selected, as a matter of fact
         report=$(make_report_path "$output_dir")
         : > "$report"
 
         printf 'Mode: %s\nFolder: %s\nFiles found: %s\nReport: %s\n' "$mode" "$folder" "$file_count" "$report"
         printf 'Mode: %s\nFolder: %s\nFiles found: %s\nReport: %s\n' "$mode" "$folder" "$file_count" "$report" >> "$report"
 
+        # compiles the filenames and what they will be updated to by the apply
+        # and creates the plan array for updating them into the output dir
         if ! collect_copies "$mode" "$folder" "$report" "$output_dir"; then
             printf '\nNo files were queued for copying.\n'
             printf '\nNo files were queued for copying.\n' >> "$report"
@@ -688,6 +698,7 @@ main() {
         fi
     fi
 
+    # sorts the plan and prints to the terminal and report file
     sort_planned_copies
     show_planned_copies "$report"
 
@@ -698,6 +709,7 @@ main() {
         exit 0
     fi
 
+    # if apply was selected, asks to copy and rename the files
     printf '\nApply these changes and copy files into normalized/? (y/n): '
     IFS= read -r confirm
     if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
@@ -706,6 +718,7 @@ main() {
         exit 0
     fi
 
+    # performs the apply and updates the report to include what had changed
     if apply_copies "$report" "$output_dir"; then
         printf '\nCopied %s file(s) into: %s\n' "${#OLD_PATHS[@]}" "$output_dir"
         printf '\nCopied %s file(s) into: %s\n' "${#OLD_PATHS[@]}" "$output_dir" >> "$report"
