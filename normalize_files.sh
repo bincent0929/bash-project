@@ -277,10 +277,13 @@ normalize_filename() {
 get_unique_path() {
     local candidate folder name stem suffix counter next_path
     candidate=$1
+    # this save the directory path
     folder=$(dirname "$candidate")
+    # this saves the fileanme
     name=$(basename "$candidate")
     suffix=""
 
+    # plits the stem from the file extension
     if [[ "$name" == *.* && "$name" != .* ]]; then
         suffix=".${name##*.}"
         stem=${name%.*}
@@ -288,6 +291,11 @@ get_unique_path() {
         stem=$name
     fi
 
+    # The loops keeps increasing the to-be
+    # appended trailing integer count value
+    # as long as the file already exists in the
+    # path or is currently already planned to be
+    # add to the path
     counter=1
     next_path=$candidate
     while [[ -e "$next_path" ]] || path_is_planned "$next_path"; do
@@ -303,11 +311,18 @@ get_chapter_number() {
     local name
     name=$(basename "$1")
 
+    # prints the value grabbed in the parantheses
+    # in this case the integer at the end of the prefix
     if [[ "$name" =~ ^[Cc][Hh][Aa][Pp][Tt][Ee][Rr]_([0-9]+)_ ]]; then
         printf '%s\n' "${BASH_REMATCH[1]}"
         return 0
     fi
-
+    
+    # this is what's printed out if the value
+    # is able to be captured from the filename.
+    # keeps it as the bottom of the list in the
+    # report, but should actually be an exit value
+    # rather than an ambiguous integer value.
     printf '999999\n'
 }
 
@@ -316,8 +331,14 @@ print_copy_line() {
     local old_path new_path chapter_number
     old_path=$1
     new_path=$2
+    # grabs the chapter number for formatting
+    # the print on the report
     chapter_number=$(get_chapter_number "$new_path")
 
+    # prints out the filenames based on
+    # how they were vs how they willbe updated
+    # uses the "999999" value from the `get_chapter_number`
+    # function to check for chapter absense
     if [[ "$chapter_number" == "999999" ]]; then
         printf 'Chapter unknown: %s  ->  normalized/%s\n' "$(basename "$old_path")" "$(basename "$new_path")"
     else
@@ -328,14 +349,28 @@ print_copy_line() {
 # Sort the planned copy arrays by chapter number.
 sort_planned_copies() {
     local count i j old_path new_path current_chapter next_chapter
+    # this uses the unupdated paths array
+    # and counts how many entries there are
+    # to get the file quantity.
     count=${#OLD_PATHS[@]}
 
+    # 
     for ((i = 0; i < count; i++)); do
         for ((j = i + 1; j < count; j++)); do
+            # grabs the chapter numbers from
+            # the normalized filename
             current_chapter=$(get_chapter_number "${NEW_PATHS[$i]}")
             next_chapter=$(get_chapter_number "${NEW_PATHS[$j]}")
 
+            # The 10# tells Bash that the number is base 10.
+            # These checks if the chapter is smaller
+            # and if it is, it comes earlier than the other chapter.
             if ((10#$next_chapter < 10#$current_chapter)); then
+                # the logic in here basically
+                # just goes ahead and moves j
+                # back a positio and moves i up
+                # position.
+                # basically a bubble sort.
                 old_path=${OLD_PATHS[$i]}
                 new_path=${NEW_PATHS[$i]}
 
@@ -355,8 +390,17 @@ print_stats() {
     folder=$1
 
     total=$(count_files "$folder")
+    # finds the report and then
+    # greps how many of the files from
+    # what find prints out contain the "chapter_N" prefix
+    # (with N being an integer)
     chapter_count=$(find "$folder" -maxdepth 1 -type f ! -name 'normalize_report_*.txt' -printf '%f\n' 2>/dev/null | grep -Eic '^chapter_[0-9]+_')
+    # same as the directly above but instead greps for "-Tagged" suffix
     tagged_count=$(find "$folder" -maxdepth 1 -type f ! -name 'normalize_report_*.txt' -printf '%f\n' 2>/dev/null | grep -Eic -- '-Tagged\.')
+    # removes the file extension
+    # then it sorts the names
+    # then prints and counts how many unique
+    # entries there are while removing spaces from the count
     duplicate_stems=$(find "$folder" -maxdepth 1 -type f ! -name 'normalize_report_*.txt' -printf '%f\n' 2>/dev/null | sed -E 's/\.[^.]+$//' | sort | uniq -d | wc -l | tr -d ' ')
 
     printf 'Filename normalization stats\n'
@@ -366,6 +410,14 @@ print_stats() {
     printf 'Files with -Tagged marker: %s\n' "$tagged_count"
     printf 'Duplicate filename stems: %s\n' "$duplicate_stems"
     printf '\nTop extensions:\n'
+    # outputs the top 5 file extensions in the folder
+    # the `sed` grabs *just* the file extension
+    # tr sends uppercase to lowercase
+    # then they are sorted and uniq values are counted
+    # and printed next to their count "N val" with
+    # N being an integer and val being a string
+    # then they are sort in reverse order by the integers
+    # head then prints out the top 5 of the values fed into it
     find "$folder" -maxdepth 1 -type f ! -name 'normalize_report_*.txt' -printf '%f\n' 2>/dev/null |
         sed -nE 's/^.*\.([^.]+)$/\1/p' |
         tr '[:upper:]' '[:lower:]' |
